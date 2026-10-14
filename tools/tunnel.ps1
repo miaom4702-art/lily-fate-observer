@@ -2,6 +2,7 @@
 # 做三件事：① 启动房间服务器（同时托管游戏网页）② 用 cloudflared 做内网穿透 ③ 显示公网网址并打开浏览器。
 # 首次运行会自动下载 cloudflared（约 30MB，来自 Cloudflare 官方）。
 $ErrorActionPreference = 'Continue'
+$ProgressPreference = 'SilentlyContinue'   # 关闭进度条（PS5.1 进度条会让下载变慢十倍）
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -18,9 +19,15 @@ $cf = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
 if (-not $cf) {
   $local = Join-Path $PSScriptRoot 'cloudflared.exe'
   if (-not (Test-Path -LiteralPath $local)) {
-    Write-Host "首次运行：正在下载内网穿透工具 cloudflared（约 30MB）……" -ForegroundColor Cyan
+    $dl = 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe'
+    Write-Host "首次运行：正在下载内网穿透工具 cloudflared（约 53MB，仅一次）……" -ForegroundColor Cyan
     try {
-      Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile $local
+      try {
+        # WebClient 无进度条，速度快
+        (New-Object System.Net.WebClient).DownloadFile($dl, $local)
+      } catch {
+        Invoke-WebRequest -UseBasicParsing -Uri $dl -OutFile $local
+      }
     } catch {
       Write-Host ("下载失败：" + $_.Exception.Message) -ForegroundColor Red
       Write-Host "可手动下载放到 tools\cloudflared.exe 后再运行。" -ForegroundColor Yellow
