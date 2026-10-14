@@ -195,6 +195,8 @@ img.avatar { image-rendering: auto; }
 .stat { font-size: var(--fs-h3); letter-spacing: 0.05em; }
 .stat.accent { color: var(--accent); font-weight: bold; }
 .stat.timer { color: var(--ink-2); }
+.stat.warn { color: var(--warn); }
+.waiting-line { color: var(--accent); font-size: var(--fs-sm); }
 
 .board { display: grid; grid-template-columns: 280px minmax(0, 1fr) 340px; gap: var(--gap); min-height: 0; }
 .col { min-height: 0; overflow: hidden; }

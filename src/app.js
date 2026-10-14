@@ -93,44 +93,28 @@
   function refreshContinue(){ if (currentPhase === 'intro' || currentPhase === 'narr') renderAction(); }
 
   /* ---------------- 对局入口（含对局内的序章演出） ---------------- */
-  let prologueQueue = [];   // [{type:'text'|'girl', id?, text}]
-  let prologueIdx = 0;
+  // 叙事到达：若是序章介绍某位少女，就高亮她的面板；联机时房主把叙事转发给其他人
+  function handleNarrative(text){
+    const m = /^【([^】·]+) ·/.exec(text);
+    if (m){
+      const c = C.characters.find(x => x.name === m[1].trim());
+      if (c){ Sound.play('reveal'); flashChar(c.id); }
+    }
+    enqueueNarr(text);
+    if (Net.connected() && E.state && E.mode === 'multi' && !E.state.passive) Net.relay({ k: 'narr', text });
+  }
 
   function startGame(){
     const name = ($('#player-name').value || '观察者').trim().slice(0, 12);
     const bots = parseInt($('#bot-count').value, 10) || 2;
-    log.innerHTML = '';
-    narrQueue = []; typing = false; typeEl = null;   // 清空打字机
+    log.innerHTML = ''; narrQueue = []; typing = false; typeEl = null;
     currentPhase = null;
-    E.newGame(bots, name, null);     // 先进入序章；主推 CP 在序章之后选
-    renderCharacters();
-    renderEmoteBar();
+    E.newGame(bots, name, null);     // 单机：引擎从序章开始（与联机流程一致）
+    renderCharacters(); renderEmoteBar();
     showScreen('screen-game');
     onChange();
-    startPrologue();
   }
 
-  function buildPrologueBeats(){
-    const beats = [];
-    (TX.prologue || []).forEach(t => beats.push({ type: 'text', text: t }));
-    const pc = TX.prologueChars || {};
-    C.characters.forEach(c => { if (pc[c.id]) beats.push({ type: 'girl', id: c.id, text: '【' + c.name + ' · ' + c.title + '】' + pc[c.id] }); });
-    beats.push({ type: 'text', text: '距离还很远，但风已经起了。观察，就从这里开始。' });
-    return beats;
-  }
-  function startPrologue(){
-    prologueQueue = buildPrologueBeats();
-    prologueIdx = 0;
-    refreshAction();
-    advancePrologue();
-  }
-  function advancePrologue(){
-    if (prologueIdx >= prologueQueue.length){ startGoalPick(); return; }   // 序章读完 → 选主推 CP
-    const beat = prologueQueue[prologueIdx++];
-    if (beat.type === 'girl'){ Sound.play('reveal'); flashChar(beat.id); }
-    enqueueNarr(beat.text);
-    refreshAction();
-  }
   function flashChar(id){
     const row = document.querySelector('[data-char="' + id + '"]');
     if (!row) return;
@@ -138,40 +122,57 @@
     row.classList.add('is-flash');
     setTimeout(() => row.classList.remove('is-flash'), 1500);
   }
-  // 重新渲染当前操作区（序章阶段 = 继续按钮）
-  function refreshAction(){ if (currentPhase === 'prologue' || currentPhase === 'intro' || currentPhase === 'narr') renderAction(); }
 
   function bootNarr(){
     const S = E.state;
     if (S && S.log.length) S.log.forEach(t => enqueueNarr(t));
   }
-  /* ---------------- 主推 CP（在序章之后选择） ---------------- */
+
+  /* ---------------- 「还有几人未确认」提示 ---------------- */
+  function gatedProgress(){
+    const S = E.state; if (!S) return null;
+    const list = S.players || [];
+    const cnt = obj => list.filter(p => obj && obj[p.id]).length;
+    switch (S.phase){
+      case 'prologue': case 'intro': case 'narr': case 'summary': return { done: cnt(S.continued), total: list.length };
+      case 'goalpick': return { done: cnt(S.goalsReady), total: list.length };
+      case 'select': return { done: list.filter(p => p.selected).length, total: list.length };
+      case 'bid': return { done: list.filter(p => p.locked).length, total: list.length };
+    }
+    return null;
+  }
+  function pendingLine(){
+    const g = gatedProgress();
+    if (!g) return el('span');
+    const left = g.total - g.done;
+    return el('p', 'waiting-line', left > 0 ? ('已确认 ' + g.done + ' / ' + g.total + ' 人 —— 还有 ' + left + ' 人未点击确认') : '全员已确认 ✅');
+  }
+
+  /* ---------------- 主推 CP（引擎 goalpick 阶段） ---------------- */
   let goalA = null, goalB = null;
   function resetSetup(){ goalA = null; goalB = null; }
 
-  function startGoalPick(){
-    const area = $('#action-area'); if (!area) return;
-    area.innerHTML = '';
+  function renderGoalPick(area){
     goalA = null; goalB = null;
+    if (E.state.goalsReady && E.state.goalsReady[E.localId]){
+      area.appendChild(el('p', 'phase-hint', '已确认主推 CP，等待其他玩家……'));
+      area.appendChild(pendingLine());
+      return;
+    }
     area.appendChild(el('div', 'guide', '序章已毕。现在，选定你「秘密主推」的一对少女——其他观察者看不到你的选择。'));
     const grid = el('div', 'girl-grid');
     const cards = {};
     C.characters.forEach(c => {
       const g = el('button', 'girl-pick');
       const img = el('img', 'avatar pixel'); img.src = c.portrait; img.alt = c.name;
-      g.appendChild(img);
-      g.appendChild(el('span', 'girl-name', c.name));
-      g.appendChild(el('span', 'girl-badge', ''));
+      g.appendChild(img); g.appendChild(el('span', 'girl-name', c.name)); g.appendChild(el('span', 'girl-badge', ''));
       g.addEventListener('click', () => { Sound.play('click'); toggleGoal(c.id); });
       grid.appendChild(g); cards[c.id] = g;
     });
     area.appendChild(grid);
-    const note = el('p', 'note', '依次点选两位少女，组成你的主推 CP。');
-    area.appendChild(note);
-    const btn = el('button', 'btn primary big', '✔ 确定主推 CP，开始观察');
-    btn.disabled = true;
-    area.appendChild(btn);
-
+    const note = el('p', 'note', '依次点选两位少女，组成你的主推 CP。'); area.appendChild(note);
+    const btn = el('button', 'btn primary big', '✔ 确定主推 CP'); btn.disabled = true; area.appendChild(btn);
+    area.appendChild(pendingLine());
     function upd(){
       C.characters.forEach(c => {
         const g = cards[c.id];
@@ -180,9 +181,7 @@
         g.querySelector('.girl-badge').textContent = (c.id === goalA) ? 'A · 主动' : (c.id === goalB) ? 'B · 对象' : '';
       });
       btn.disabled = !(goalA && goalB);
-      note.textContent = (goalA && goalB)
-        ? ('主推：' + charById(goalA).name + ' × ' + charById(goalB).name + '（确认后开始第 1 学期）')
-        : '依次点选两位少女，组成你的主推 CP。';
+      note.textContent = (goalA && goalB) ? ('主推：' + charById(goalA).name + ' × ' + charById(goalB).name) : '依次点选两位少女，组成你的主推 CP。';
     }
     function toggleGoal(id){
       if (id === goalA) goalA = null;
@@ -195,8 +194,10 @@
     btn.addEventListener('click', () => {
       if (!goalA || !goalB) return;
       Sound.play('lock');
-      E.setGoal(goalA, goalB);
-      E.startRound();
+      E.applyGoal(E.localId, goalA, goalB);                 // 仅本地存储（保密）
+      if (isMultiClient()) Net.relay({ k: 'action', kind: 'goalready' });
+      else E.applyGoalReady(E.localId);
+      renderAction();
     });
     upd();
   }
@@ -261,19 +262,31 @@
     document.body.classList.remove('is-selecting', 'is-dragging');
     if (S.paused){ area.appendChild(el('p', 'hint', '对局已暂停。')); return; }
     currentPhase = S.phase;
-    if (S.phase === 'prologue'){ renderPrologueAction(area); return; }
+    if (S.phase === 'prologue'){
+      if (localContinued()){ area.appendChild(el('p', 'phase-hint', '已继续，等待其他玩家……')); area.appendChild(pendingLine()); return; }
+      area.appendChild(el('p', 'phase-hint', '序章 · 观察者。点「继续」逐段阅读；介绍到哪位少女，她在左侧的面板会高亮。'));
+      const b = el('button', 'btn primary big', BTN.continue || '继续 ▶');
+      b.addEventListener('click', () => { Sound.play('click'); if (typing) completeTyping(); else doContinue(); });
+      area.appendChild(b);
+      area.appendChild(pendingLine());
+      return;
+    }
+    if (S.phase === 'goalpick'){ renderGoalPick(area); return; }
     if (S.phase === 'intro'){
-      if (localContinued()){ area.appendChild(el('p', 'phase-hint', '已继续，等待其他玩家……')); return; }
+      if (localContinued()){ area.appendChild(pendingLine()); return; }
       area.appendChild(el('p', 'phase-hint', isMulti() ? '阅读本学期的开场，点击「继续」；所有玩家都继续后进入下一步。' : '阅读本学期的开场，然后点击继续。'));
       const b = el('button', 'btn primary big', BTN.continue || '继续 ▶');
       b.addEventListener('click', () => { Sound.play('click'); if (typing) completeTyping(); else doContinue(); });
       area.appendChild(b);
+      area.appendChild(pendingLine());
     } else if (S.phase === 'select'){
       renderSelect(area, S);
+      area.appendChild(pendingLine());
     } else if (S.phase === 'bid'){
       renderBid(area, S);
+      area.appendChild(pendingLine());
     } else if (S.phase === 'narr'){
-      if (localContinued()){ area.appendChild(el('p', 'phase-hint', '已继续，等待其他玩家……')); return; }
+      if (localContinued()){ area.appendChild(pendingLine()); return; }
       area.appendChild(el('p', 'phase-hint', '剧情演出中。'));
       const row = el('div', 'btn-row');
       const b = el('button', 'btn primary big', BTN.continue || '继续 ▶');
@@ -282,25 +295,15 @@
       skip.addEventListener('click', () => { Sound.play('click'); completeTyping(); });
       row.appendChild(b); row.appendChild(skip);
       area.appendChild(row);
+      area.appendChild(pendingLine());
     } else if (S.phase === 'summary'){
       renderSummary(area, S);
+      area.appendChild(pendingLine());
     }
   }
 
-  function renderPrologueAction(area){
-    area.appendChild(el('p', 'phase-hint', '序章 · 观察者。点「继续」逐段阅读；介绍到哪位少女，她在左侧的面板会高亮。'));
-    const row = el('div', 'btn-row');
-    const b = el('button', 'btn primary big', BTN.continue || '继续 ▶');
-    b.addEventListener('click', () => { Sound.play('click'); if (typing) completeTyping(); else advancePrologue(); });
-    const skip = el('button', 'btn', '跳过序章');
-    skip.addEventListener('click', () => { Sound.play('click'); completeTyping(); prologueIdx = prologueQueue.length; startGoalPick(); });
-    row.appendChild(b); row.appendChild(skip);
-    area.appendChild(row);
-    area.appendChild(el('p', 'hint', '进度 ' + Math.min(prologueIdx, prologueQueue.length) + ' / ' + prologueQueue.length));
-  }
-
   function renderSummary(area, S){
-    if (localContinued()){ area.appendChild(el('p', 'phase-hint', '已继续，等待其他玩家……')); return; }
+    if (localContinued()){ area.appendChild(pendingLine()); return; }
     const sum = S.summary || {};
     area.appendChild(el('div', 'step-title', '本学期小结'));
     area.appendChild(el('p', 'phase-hint', '第 ' + (sum.round || S.round) + ' 学期结束。目前最亲近的三对：'));
@@ -548,6 +551,8 @@
     updateBidPanel();
     renderStepper(S);
     const bp = $('#bid-panel'); if (bp) bp.style.display = (S.phase === 'bid') ? '' : 'none';
+    const wl = $('#waiting-label');
+    if (wl){ const g = gatedProgress(); wl.textContent = (g && (g.total - g.done) > 0) ? ('等待 ' + (g.total - g.done) + ' 人确认') : ''; }
 
     if (S.phase !== currentPhase && S.phase !== 'bid'){ renderAction(); currentPhase = S.phase; }
     else if (S.phase === 'bid' && currentPhase !== 'bid'){ renderAction(); currentPhase = 'bid'; }
@@ -924,28 +929,19 @@
     if(tools) tools.style.display = (Net.isHost && Net.connected()) ? 'flex' : 'none';
   }
 
-  function populateLobbyGoals(){
-    const a=document.getElementById('lobby-goal-a'), b=document.getElementById('lobby-goal-b');
-    if(!a||!b||a.options.length) return;
-    C.characters.forEach((c,i)=>{ a.appendChild(new Option(c.name,c.id,false,i===0)); b.appendChild(new Option(c.name,c.id,false,i===1)); });
-  }
-  function currentGoal(){ const a=document.getElementById('lobby-goal-a').value, b=document.getElementById('lobby-goal-b').value; return (a&&b&&a!==b)?{a,b}:null; }
-
   function enterMultiGame(){
     log.innerHTML=''; narrQueue=[]; typing=false; typeEl=null; currentPhase=null;
     renderCharacters(); renderEmoteBar(); showScreen('screen-game'); onChange();
   }
   function hostStart(){
-    const goal = currentGoal();
-    if(!goal){ const st=document.getElementById('lobby-status'); if(st) st.textContent='请先选择你的主推 CP（A、B 两名少女）'; return; }
     const roster = lobbyPlayers.map(p=>({ id:p.id, name:p.name }));
-    E.newMultiGame({ players: roster, localId: Net.myId, isHost: true, botCount: pendingBots, localGoal: goal });
-    Net.relay({ k:'start', cfg:{ roster, botCount: pendingBots } });
+    E.newMultiGame({ players: roster, localId: Net.myId, isHost: true, botCount: pendingBots });
+    Net.relay({ k:'start', cfg:{ roster, botCount: pendingBots } });   // 先让其他人进入对局
     enterMultiGame();
-    E.startRound();
+    E.startPrologue();                                                  // 再推送序章第一段（会转发给所有人）
   }
   function clientStart(cfg){
-    E.newMultiGame({ players: cfg.roster, localId: Net.myId, isHost: false, botCount: cfg.botCount||0, localGoal: currentGoal() });
+    E.newMultiGame({ players: cfg.roster, localId: Net.myId, isHost: false, botCount: cfg.botCount||0 });
     enterMultiGame();
   }
   function applyRemoteAction(pid, d){
@@ -953,6 +949,7 @@
     else if(d.kind==='bid') E.applyBid(pid, d.amount);
     else if(d.kind==='lock') E.applyLock(pid);
     else if(d.kind==='continue') E.applyContinue(pid);
+    else if(d.kind==='goalready') E.applyGoalReady(pid);
   }
   function scheduleBroadcast(){
     if(bcTimer) return;
@@ -961,10 +958,11 @@
   function onRelay(m){
     const d = m.data; if(!d) return;
     if(d.k==='chat'){ chatLine(inGame()?'game-chat':'lobby-chat', d.name, d.text); Sound.play('emote'); return; }
+    if(d.k==='narr'){ handleNarrative(d.text); return; }
     if(d.k==='start'){ if(!Net.isHost) clientStart(d.cfg); return; }
     if(d.k==='state'){ if(E.mode==='multi' && E.state && E.state.passive) E.applySnapshot(d.snap); return; }
     if(d.k==='action'){ if(Net.isHost) applyRemoteAction(m.from, d); return; }
-    if(d.k==='over'){ if(!Net.isHost){ showEnding(); const g=currentGoal(); if(g) Net.relay({k:'mygoal',a:g.a,b:g.b}); } return; }
+    if(d.k==='over'){ if(!Net.isHost){ showEnding(); const lp=E.localPlayer(); if(lp && lp.goal) Net.relay({k:'mygoal',a:lp.goal.a,b:lp.goal.b}); } return; }
     if(d.k==='mygoal'){ if(Net.isHost){ if(d.a&&d.b) E.setGoalOf(m.from, d.a, d.b); E.refreshEnding(); Net.relay({k:'ending', ending: E.state.ending}); } return; }
     if(d.k==='ending'){ if(!Net.isHost){ E.setEnding(d.ending); showEnding(); } return; }
   }
@@ -985,7 +983,7 @@
     if (urlInput && !urlInput.value && Net.defaultServer()) urlInput.value = Net.defaultServer();
     const urlRow = document.getElementById('net-url-row');
     if (urlRow) urlRow.style.display = deployed ? 'none' : '';
-    on('nav-multi','click', ()=>{ Sound.play('click'); populateLobbyGoals(); showScreen('screen-lobby'); });
+    on('nav-multi','click', ()=>{ Sound.play('click'); showScreen('screen-lobby'); });
     on('lobby-back','click', leaveLobby);
     on('lobby-leave','click', leaveLobby);
     on('net-create','click', async ()=>{
@@ -1076,7 +1074,7 @@
     document.addEventListener('pointerdown', () => { Sound.ensure(); Sound.probe(); }, { once: true });
     Sound.probe();
 
-    E.on('narrative', enqueueNarr);
+    E.on('narrative', handleNarrative);
     E.on('change', onChange);
     E.on('over', showEnding);
     E.on('roundStart', r => { Sound.play('round'); setScene(r); });

@@ -106,8 +106,7 @@
       <p id="lobby-status" class="note">局域网：先双击「启动服务器.bat」，服务器填 ws://房主IP:8787。公网/异地：把服务器部署到云端（见 README「公网联机」），服务器填 wss://你的域名。</p>
       <div class="page-head"><span class="sub-title">玩家</span><span id="lobby-count" class="stat">0 / 8</span></div>
       <div id="lobby-players" class="lobby-players"></div>
-      <div class="field"><label for="lobby-goal-a">主推 A</label><select id="lobby-goal-a" class="select"></select></div>
-      <div class="field"><label for="lobby-goal-b">主推 B</label><select id="lobby-goal-b" class="select"></select></div>
+      <p class="hint">主推 CP 会在进入对局、序章结束后选择（每人各自秘密选，互不可见）。</p>
       <div id="lobby-host-tools" class="btn-row" style="display:none">
         <button id="lobby-addbot" class="btn small">+ 机器人</button>
         <button id="lobby-start" class="btn primary">开始对局</button>
@@ -128,6 +127,7 @@
       </div>
       <div class="top-right">
         <span id="online-label" class="stat"></span>
+        <span id="waiting-label" class="stat warn"></span>
         <span id="timer-label" class="stat timer"></span>
         <span id="cp-label" class="stat">控制点 0</span>
         <button id="btn-mute" class="btn small">音效：开</button>

@@ -48,12 +48,13 @@ window.Engine = (function () {
     const aff = {};
     ids.forEach(a => { aff[a] = {}; ids.forEach(b => { if (a !== b) aff[a][b] = 0; }); });
 
-    S = { phase: 'idle', round: 0, players, aff, log: [], confessions: [], couples: [],
+    S = { phase: 'prologue', round: 0, players, aff, log: [], confessions: [], couples: [],
           revealedSecrets: {}, summary: null, deadline: 0, timeLeft: 0, paused: false, ended: false,
           ending: null, started: false, botCount, savedAt: null, continued: {},
+          prologue: buildPrologue(), prologueIdx: 0, goalsReady: {},
           mode: 'solo', localId: 'you', passive: false };
     startLoop();
-    S.phase = 'prologue';   // 先进入序章，界面推进后调用 startRound() 才进入第 1 学期
+    pushPrologue();          // 单机：直接推送序章第一段
     return S;
   }
 
@@ -73,8 +74,10 @@ window.Engine = (function () {
     S = { phase: 'prologue', round: 0, players, aff, log: [], confessions: [], couples: [],
           revealedSecrets: {}, summary: null, deadline: 0, timeLeft: 0, paused: false, ended: false,
           ending: null, started: false, botCount: cfg.botCount || 0, savedAt: null, continued: {},
+          prologue: buildPrologue(), prologueIdx: 0, goalsReady: {},
           mode: 'multi', localId: cfg.localId, passive: !cfg.isHost };
     startLoop();
+    // 联机：房主稍后（广播 start 之后）再调用 startPrologue()，避免首段丢失
     return S;
   }
 
@@ -139,7 +142,37 @@ window.Engine = (function () {
   }
 
   function startRound(){ beginRound(); }
-  function setGoal(a, b){ const me = S.players.find(p => p.human); if (me) me.goal = { a, b }; emit('change'); }
+  function setGoal(a, b){ const me = S.players.find(p => p.id === S.localId); if (me) me.goal = { a, b }; emit('change'); }
+
+  /* ---------------- 序章 & 选主推 CP（单机 / 联机流程一致） ---------------- */
+  function buildPrologue(){
+    const beats = [];
+    (TX.prologue || []).forEach(t => beats.push({ text: t }));
+    const pc = TX.prologueChars || {};
+    ids.forEach(id => { if (pc[id]){ const c = charById(id); beats.push({ id, text: '【' + c.name + ' · ' + c.title + '】' + pc[id] }); } });
+    beats.push({ text: '距离还很远，但风已经起了。观察，就从这里开始。' });
+    return beats;
+  }
+  function pushPrologue(){
+    if (!S) return;
+    S.phase = 'prologue';
+    if (S.prologueIdx >= S.prologue.length){ startGoalPickPhase(); return; }
+    const beat = S.prologue[S.prologueIdx++];
+    pushNarrative(beat.text);
+    resetContinued();
+    emit('change');
+  }
+  function startPrologue(){ pushPrologue(); }
+  function startGoalPickPhase(){
+    S.phase = 'goalpick';
+    S.goalsReady = {};
+    S.players.forEach(p => { S.goalsReady[p.id] = !p.human; });
+    resetContinued();
+    emit('change');
+  }
+  function allGoalsReady(){ return S.players.every(p => S.goalsReady[p.id]); }
+  function applyGoalReady(pid){ if (S && S.goalsReady){ S.goalsReady[pid] = true; emit('change'); } }
+  function applyGoal(pid, a, b){ const p = S.players.find(x => x.id === pid); if (p) p.goal = { a, b }; }
 
   function goSelect(){
     setPhase('select', 0);
@@ -303,6 +336,10 @@ window.Engine = (function () {
     if (S.paused) return;
     if (S.deadline) S.timeLeft = Math.max(0, (S.deadline - now()) / 1000);
     botsTick();
+    // 序章：全员「继续」→ 推下一段；全部读完 → 选主推 CP
+    if (S.phase === 'prologue' && allContinued()){ pushPrologue(); return; }
+    // 选 CP：全员确认 → 第 1 学期
+    if (S.phase === 'goalpick' && allGoalsReady()){ beginRound(); return; }
     // 读剧情阶段：全员「继续」或超时才推进
     if (S.phase === 'intro' && (allContinued() || (S.deadline && S.timeLeft <= 0))){ goSelect(); return; }
     if (S.phase === 'select' && S.players.every(p => p.selected)){ goBid(); return; }
@@ -385,7 +422,7 @@ window.Engine = (function () {
       phase: S.phase, round: S.round, aff: S.aff,
       players: S.players.map(p => ({ id: p.id, name: p.name, human: p.human, cp: p.cp, bid: p.bid, selected: p.selected, locked: p.locked, hand: p.hand })),
       log: S.log, confessions: S.confessions, couples: S.couples,
-      revealedSecrets: S.revealedSecrets, summary: S.summary, continued: S.continued,
+      revealedSecrets: S.revealedSecrets, summary: S.summary, continued: S.continued, goalsReady: S.goalsReady, prologueIdx: S.prologueIdx,
       paused: S.paused, ended: S.ended, ending: S.ending, timeLeft: S.timeLeft
     };
   }
@@ -397,6 +434,7 @@ window.Engine = (function () {
     S.players = (d.players || []).map(p => ({ ...p, bot: !p.human, goal: (p.id === S.localId ? keepGoal : null) }));
     S.log = d.log || []; S.confessions = d.confessions || []; S.couples = d.couples || [];
     S.revealedSecrets = d.revealedSecrets || {}; S.summary = d.summary || null; S.continued = d.continued || {};
+    S.goalsReady = d.goalsReady || {}; if (d.prologueIdx != null) S.prologueIdx = d.prologueIdx;
     S.paused = !!d.paused; S.ended = !!d.ended; S.ending = d.ending || null;
     S.timeLeft = d.timeLeft || 0; S.deadline = 0;
     emit('change');
@@ -442,7 +480,7 @@ window.Engine = (function () {
   function clearSave(){ try { localStorage.removeItem(SAVE_KEY); } catch (e){} }
 
   return {
-    on, newGame, newMultiGame, startRound, setGoal, addBot, removePlayer, setGoalOf,
+    on, newGame, newMultiGame, startRound, startPrologue, setGoal, applyGoal, applyGoalReady, addBot, removePlayer, setGoalOf,
     applySelect, applyBid, applyLock, applyContinue, playerById, localPlayer, snapshot, applySnapshot,
     refreshEnding, setEnding, abandon,
     load, save, hasSave, clearSave,
