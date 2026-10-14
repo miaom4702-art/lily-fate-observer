@@ -83,11 +83,11 @@ function leave(conn) {
 }
 
 /* ---------------- HTTP + Upgrade ---------------- */
-const server = http.createServer((req, res) => {
+function onRequest(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('百合命运观察者 · 房间服务器运行中。房间数：' + rooms.size);
-});
-server.on('upgrade', (req, socket) => {
+}
+function onUpgrade(req, socket) {
   const key = req.headers['sec-websocket-key'];
   if (!key) { socket.destroy(); return; }
   const accept = crypto.createHash('sha1').update(key + GUID).digest('base64');
@@ -107,7 +107,7 @@ server.on('upgrade', (req, socket) => {
   });
   socket.on('close', () => leave(conn));
   socket.on('error', () => leave(conn));
-});
+}
 
 function handle(conn, text) {
   if (text === '__CLOSE__') { try { conn.socket.end(); } catch (e) {} return; }
@@ -167,6 +167,19 @@ function handle(conn, text) {
   }
 }
 
+// 支持 HTTPS/WSS：设置环境变量 TLS_CERT / TLS_KEY 指向证书即可（云平台通常已终止 TLS，无需设置）
+let server, scheme = 'ws';
+const CERT = process.env.TLS_CERT, KEY = process.env.TLS_KEY;
+if (CERT && KEY) {
+  const https = require('https');
+  const fs = require('fs');
+  server = https.createServer({ cert: fs.readFileSync(CERT), key: fs.readFileSync(KEY) }, onRequest);
+  scheme = 'wss';
+} else {
+  server = http.createServer(onRequest);
+}
+server.on('upgrade', onUpgrade);
 server.listen(PORT, () => {
-  console.log('房间服务器已启动： ws://localhost:' + PORT + '  （最多 ' + MAX_PLAYERS + ' 人/房）');
+  console.log('房间服务器已启动： ' + scheme + '://0.0.0.0:' + PORT + '  （最多 ' + MAX_PLAYERS + ' 人/房）');
+  console.log('公网部署时，客户端连接： ' + scheme + '://<你的域名或公网IP>:' + PORT);
 });

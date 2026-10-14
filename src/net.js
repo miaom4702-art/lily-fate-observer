@@ -7,9 +7,21 @@ window.Net = (function () {
   function emit(ev, d){ (L[ev] || []).forEach(f => { try { f(d); } catch (e){} }); }
   function connected(){ return !!ws && ws.readyState === 1; }
 
+  function normalize(url){
+    let u = String(url || '').trim();
+    if (u.indexOf('https://') === 0) u = 'wss://' + u.slice(8);
+    else if (u.indexOf('http://') === 0) u = 'ws://' + u.slice(7);
+    else if (u.indexOf('://') < 0){
+      // 裸地址：本地用 ws，其余默认 wss（公网/云平台）
+      const local = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(u);
+      u = (local ? 'ws://' : 'wss://') + u;
+    }
+    return u;
+  }
   function connect(url){
+    const real = normalize(url);
     return new Promise((resolve, reject) => {
-      try { ws = new WebSocket(url); } catch (e){ reject(e); return; }
+      try { ws = new WebSocket(real); } catch (e){ reject(e); return; }
       ws.onopen = () => resolve();
       ws.onerror = () => reject(new Error('无法连接服务器'));
       ws.onclose = () => { emit('closed'); ws = null; };

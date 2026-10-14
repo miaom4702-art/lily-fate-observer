@@ -1,0 +1,14 @@
+{
+  "name": "lily-fate-observer-server",
+  "version": "0.1.1",
+  "private": true,
+  "description": "百合命运观察者 · 联机房间服务器（零依赖 WebSocket）",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

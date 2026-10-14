@@ -1,0 +1,13 @@
+# Render.com 一键部署：把本仓库连到 Render，会自动识别此文件创建 Web 服务。
+# 部署完成后会得到一个 https 地址，例如 https://lily-fate-server.onrender.com
+# 玩家在网页「联机对战 → 服务器」里填： wss://lily-fate-server.onrender.com
+services:
+  - type: web
+    name: lily-fate-server
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server/server.js
+    envVars:
+      - key: PORT
+        value: 8787
