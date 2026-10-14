@@ -207,7 +207,7 @@ if (CERT && KEY) {
   server = http.createServer(onRequest);
 }
 server.on('upgrade', onUpgrade);
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log('房间服务器已启动： ' + scheme + '://0.0.0.0:' + PORT + '  （最多 ' + MAX_PLAYERS + ' 人/房）');
-  console.log('公网部署时，客户端连接： ' + scheme + '://<你的域名或公网IP>:' + PORT);
+  console.log('本机自检： http://127.0.0.1:' + PORT + '/healthz');
 });

@@ -60,7 +60,7 @@ Write-Host "房间服务器已就绪。" -ForegroundColor Green
 
 # 4) 启动内网穿透并抓取公网地址
 $log = Join-Path $env:TEMP ("cf_tunnel_" + [guid]::NewGuid().ToString('N') + ".log")
-$cfp = Start-Process -FilePath $cf -ArgumentList 'tunnel','--url',("http://localhost:" + $port) -RedirectStandardError $log -PassThru -WindowStyle Hidden
+$cfp = Start-Process -FilePath $cf -ArgumentList 'tunnel','--no-autoupdate','--url',("http://127.0.0.1:" + $port) -RedirectStandardError $log -PassThru -WindowStyle Hidden
 
 $url = $null
 for ($i = 0; $i -lt 60; $i++) {
@@ -78,6 +78,14 @@ if ($url) {
   Write-Host ("  公网地址（把这个发给朋友就行）：" ) -ForegroundColor Green
   Write-Host ("      " + $url) -ForegroundColor Green
   Write-Host "=====================================================" -ForegroundColor Green
+  Write-Host "  正在自检隧道是否连通……"
+  $reach = $false
+  for ($k = 0; $k -lt 15; $k++) {
+    Start-Sleep -Milliseconds 800
+    try { $hr = Invoke-WebRequest -UseBasicParsing -Uri ($url + '/healthz') -TimeoutSec 4; if ($hr.StatusCode -eq 200) { $reach = $true; break } } catch {}
+  }
+  if ($reach) { Write-Host "  ✅ 隧道已连通，朋友可以访问了。" -ForegroundColor Green }
+  else { Write-Host "  ⚠ 隧道暂时访问不到服务器：多半是那个运行服务器的窗口被关掉了；请保持本窗口开着，稍等半分钟再刷新。" -ForegroundColor Yellow }
   Write-Host "  朋友打开这个网址 → 填名字 → 一人创建房间，其余输房间码加入。"
   Write-Host "  保持本窗口开着；按回车结束（会关闭房间）。"
   try { Set-Clipboard -Value $url } catch {}
