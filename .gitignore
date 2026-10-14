@@ -19,3 +19,7 @@ tools/素材放入区/*
 
 # 构建产物
 build/
+
+# 内网穿透工具（首次运行自动下载，不入库）
+tools/cloudflared.exe
+cf_tunnel_*.log
