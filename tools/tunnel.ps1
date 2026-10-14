@@ -37,10 +37,26 @@ if (-not $cf) {
   $cf = $local
 }
 
-# 3) 启动房间服务器（同源托管游戏网页 + 联机）
+# 3) 启动房间服务器（同源托管游戏网页 + 联机），并确认它真的起来了
 Write-Host "正在启动房间服务器（端口 $port）……"
-$srv = Start-Process -FilePath 'node' -ArgumentList "server\server.js" -WorkingDirectory $root -PassThru
-Start-Sleep -Seconds 1
+$srv = Start-Process -FilePath 'node' -ArgumentList "server\server.js" -WorkingDirectory $root -PassThru -WindowStyle Hidden
+
+$ok = $false
+for ($i = 0; $i -lt 24; $i++) {
+  Start-Sleep -Milliseconds 500
+  try {
+    $r = Invoke-WebRequest -UseBasicParsing -Uri ("http://localhost:" + $port + "/healthz") -TimeoutSec 2
+    if ($r.StatusCode -eq 200) { $ok = $true; break }
+  } catch {}
+}
+if (-not $ok) {
+  Write-Host "房间服务器没有启动成功（端口 $port）。请检查：" -ForegroundColor Red
+  Write-Host "  1) 是否已安装 Node.js（https://nodejs.org）" -ForegroundColor Yellow
+  Write-Host "  2) 端口 $port 是否被别的程序占用" -ForegroundColor Yellow
+  try { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue } catch {}
+  Write-Host "按回车退出。"; [void][System.Console]::ReadLine(); exit 1
+}
+Write-Host "房间服务器已就绪。" -ForegroundColor Green
 
 # 4) 启动内网穿透并抓取公网地址
 $log = Join-Path $env:TEMP ("cf_tunnel_" + [guid]::NewGuid().ToString('N') + ".log")
