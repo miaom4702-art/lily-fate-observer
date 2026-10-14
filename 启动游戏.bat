@@ -1,0 +1,6 @@
+@echo off
+cd /d "%~dp0"
+echo [1/2] Building game text from content\*.txt ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\build_content.ps1"
+echo [2/2] Opening game ...
+start "" "%~dp0index.html"

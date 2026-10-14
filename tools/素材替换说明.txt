@@ -1,0 +1,61 @@
+================================================
+ 素材替换说明（你要做的只有 3 步）
+================================================
+
+【第 1 步】把图片存到电脑上
+   注意：聊天窗口里贴的图不会自动变成文件，必须先在网页/聊天里
+   右键「图片另存为」，存成 .png 或 .jpg。
+
+【第 2 步】按下面的「文件名」重命名，放进
+   D:\LilyFateBoard\tools\素材放入区\
+   （文件名决定它替换谁，必须是下面这些名字之一）
+
+【第 3 步】双击 D:\LilyFateBoard\tools\应用放入的素材.bat
+   然后浏览器按 Ctrl+F5 刷新，就能看到新素材。
+
+------------------------------------------------
+ 文件名对照表（放进「素材放入区」）
+------------------------------------------------
+角色头像（会自动裁成方形，随便放多大都行）：
+   mio.png      星见澪
+   akari.png    白石灯
+   shizuku.png  雨宫雫
+   saori.png    神代纱织
+   ichigo.png   森川苺
+   yuu.png      莲见悠
+
+场景横幅：
+   scene_library.png    图书室
+   scene_corridor.png   走廊
+   scene_field.png      操场
+   scene_infirmary.png  保健室
+   scene_rooftop.png    天台
+
+界面元素：
+   ui_logo.png / ui_heart.png / ui_card_back.png / ui_bg_title.png / ui_divider.png
+
+音效 / BGM（用 sfx_ / bgm_ 前缀）：
+   sfx_click.mp3      → assets/audio/sfx/click.mp3
+   sfx_confessOk.mp3  → assets/audio/sfx/confessOk.mp3
+   bgm_library.mp3    → assets/audio/bgm/library.mp3
+   …（可用名称见 assets/audio/sfx/README.txt）
+
+表情图标（6 个）：emote_0.png … emote_5.png
+   直接覆盖到 D:\LilyFateBoard\assets\images\icons\ 即可
+
+------------------------------------------------
+ 常用脚本都在 tools\ 里
+------------------------------------------------
+   应用放入的素材.bat   把「素材放入区」里的文件应用到游戏
+   替换头像.bat         拖一张图、输入角色 id，自动裁方形换头像
+   更新文本.bat         改完 content\*.txt 后更新游戏文本
+   gen_assets.ps1       重新生成黑白像素头像/表情/界面占位素材
+   gen_scenes.ps1       重新生成场景图/标题背景
+
+------------------------------------------------
+ 常见问题
+------------------------------------------------
+Q：图片不是正方形行不行？ 行，头像脚本会自动裁成正方形（竖图偏上裁）。
+Q：支持哪些格式？ .png / .jpg / .jpeg / .webp 都行。
+Q：替换后没变化？ 浏览器按 Ctrl+F5 强制刷新。
+Q：想改回占位素材？ 跑 tools\gen_assets.ps1。

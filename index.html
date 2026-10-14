@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百合命运观察者 · 单机版</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ======== 标题画面 ======== -->
+  <section id="screen-title" class="screen is-active">
+    <div class="title-wrap">
+      <img class="title-heart pixel" src="assets/images/ui/logo.png" alt="">
+      <h1 class="game-title-big">百合命运观察者</h1>
+      <p class="title-sub">不直接扮演少女的 · 命运观察者桌游</p>
+      <p class="title-tag">黑白像素 · 单机 · 12 学期（3 章）· 双向好感独立数值</p>
+      <nav class="title-menu">
+        <button id="nav-new" class="btn primary big">开始新游戏</button>
+        <button id="nav-multi" class="btn big">联机对战</button>
+        <button id="nav-continue" class="btn big">继续存档</button>
+        <button id="nav-help" class="btn big">玩法说明</button>
+        <button id="nav-codex" class="btn big">角色图鉴</button>
+        <button id="nav-settings" class="btn big">设置</button>
+      </nav>
+    </div>
+    <p class="title-foot">网页单机版 · v1</p>
+  </section>
+
+  <!-- ======== 新游戏设置 ======== -->
+  <section id="screen-setup" class="screen">
+    <div class="menu-card panel">
+      <h2 id="setup-title" class="section-title">开始新游戏</h2>
+      <p class="hint">先进入学园、认识六名少女，之后再决定你秘密主推的 CP。</p>
+      <div class="field">
+        <label for="player-name">玩家名</label>
+        <input id="player-name" class="text-input" value="观察者" maxlength="12">
+      </div>
+      <div class="field">
+        <label for="bot-count">AI 对手</label>
+        <select id="bot-count" class="select">
+          <option value="1">1 名</option>
+          <option value="2" selected>2 名</option>
+          <option value="3">3 名</option>
+        </select>
+      </div>
+      <div class="menu-actions">
+        <button id="btn-start" class="btn primary">开始对局</button>
+        <button id="nav-back-title" class="btn">返回</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 玩法说明 ======== -->
+  <section id="screen-help" class="screen">
+    <div class="page panel">
+      <div class="page-head">
+        <h2 id="help-title" class="section-title">玩法说明</h2>
+        <button class="btn small screen-back">返回</button>
+      </div>
+      <div id="help-body" class="page-scroll help-content"></div>
+    </div>
+  </section>
+
+  <!-- ======== 角色图鉴（页内全屏，左侧完整立绘） ======== -->
+  <section id="screen-codex" class="screen">
+    <div class="codex-head">
+      <h2 id="codex-title" class="section-title">角色图鉴</h2>
+      <button id="codex-back" class="btn small">返回</button>
+    </div>
+    <div class="codex-page">
+      <div class="codex-portrait"><img id="codex-portrait" src="" alt=""></div>
+      <div class="codex-side">
+        <div id="codex-nav" class="codex-nav"></div>
+        <div id="codex-detail"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 设置 ======== -->
+  <section id="screen-settings" class="screen">
+    <div class="menu-card panel">
+      <div class="page-head">
+        <h2 id="settings-title" class="section-title">设置</h2>
+        <button class="btn small screen-back">返回</button>
+      </div>
+      <div id="settings-body" class="settings-body"></div>
+    </div>
+  </section>
+
+  <!-- ======== 联机大厅 ======== -->
+  <section id="screen-lobby" class="screen">
+    <div class="menu-card panel lobby-card">
+      <div class="page-head">
+        <h2 class="section-title">联机大厅</h2>
+        <button id="lobby-back" class="btn small">返回</button>
+      </div>
+      <div class="field"><label for="net-name">玩家名</label><input id="net-name" class="text-input" value="观察者" maxlength="12"></div>
+      <div class="field"><label for="net-url">服务器</label><input id="net-url" class="text-input" value="ws://localhost:8787"></div>
+      <div class="field"><label for="net-code">房间码</label><input id="net-code" class="text-input" maxlength="6" placeholder="4~6 位字母数字"></div>
+      <div class="menu-actions">
+        <button id="net-create" class="btn primary">创建房间</button>
+        <button id="net-join" class="btn">加入房间</button>
+      </div>
+      <p id="lobby-status" class="note">先启动房间服务器（双击 启动服务器.bat），再创建/加入房间。</p>
+      <div class="page-head"><span class="sub-title">玩家</span><span id="lobby-count" class="stat">0 / 8</span></div>
+      <div id="lobby-players" class="lobby-players"></div>
+      <div class="field"><label for="lobby-goal-a">主推 A</label><select id="lobby-goal-a" class="select"></select></div>
+      <div class="field"><label for="lobby-goal-b">主推 B</label><select id="lobby-goal-b" class="select"></select></div>
+      <div id="lobby-host-tools" class="btn-row" style="display:none">
+        <button id="lobby-addbot" class="btn small">+ 机器人</button>
+        <button id="lobby-start" class="btn primary">开始对局</button>
+      </div>
+      <div class="page-head"><span class="sub-title">聊天</span></div>
+      <div id="lobby-chat" class="chat-log"></div>
+      <div class="chat-row"><input id="lobby-chat-input" class="text-input" placeholder="输入消息…"><button id="lobby-chat-send" class="btn small">发送</button></div>
+      <button id="lobby-leave" class="btn">离开房间</button>
+    </div>
+  </section>
+
+  <!-- ======== 对局 ======== -->
+  <section id="screen-game" class="screen">
+    <header id="topbar" class="panel">
+      <div class="top-left">
+        <span id="round-label" class="stat">第 0 / 12 学期</span>
+        <span id="phase-label" class="stat accent">—</span>
+      </div>
+      <div class="top-right">
+        <span id="online-label" class="stat"></span>
+        <span id="timer-label" class="stat timer"></span>
+        <span id="cp-label" class="stat">控制点 0</span>
+        <button id="btn-mute" class="btn small">音效：开</button>
+        <button id="btn-save" class="btn small">保存</button>
+      </div>
+    </header>
+
+    <div id="stepper" class="stepper"></div>
+
+    <main class="board">
+      <aside class="col col-left panel">
+        <h2 id="title-relations" class="section-title">少女关系</h2>
+        <div id="char-list" class="char-list"></div>
+      </aside>
+
+      <section class="col col-center">
+        <div class="panel narr-panel">
+          <h2 id="title-narrative" class="section-title">叙事</h2>
+          <div class="scene-banner"><img id="scene-img" class="pixel" alt=""></div>
+          <div id="narrative-log" class="narrative-log"></div>
+        </div>
+        <div class="panel action-panel">
+          <div id="action-area"></div>
+        </div>
+      </section>
+
+      <aside class="col col-right">
+        <div class="panel right-tools">
+          <div class="tools-grid">
+            <button class="btn small" data-tool="archive">角色档案</button>
+            <button class="btn small" data-tool="relations">关系面板</button>
+            <button class="btn small" data-tool="pause">暂停</button>
+            <button class="btn small" data-tool="settings">设置</button>
+            <button class="btn small tool-exit" data-tool="exit">退出对局</button>
+          </div>
+        </div>
+        <div class="panel bid-panel" id="bid-panel">
+          <h2 id="title-bids" class="section-title">出价</h2>
+          <div id="bid-list" class="bid-list"></div>
+        </div>
+        <div class="panel chat-panel">
+          <h2 class="section-title">聊天 / 表情</h2>
+          <div id="emote-bar" class="emote-bar"></div>
+          <div id="game-chat" class="chat-log"></div>
+          <div class="chat-row"><input id="game-chat-input" class="text-input" placeholder="输入消息…"><button id="game-chat-send" class="btn small">发送</button></div>
+        </div>
+      </aside>
+    </main>
+  </section>
+
+  <!-- ======== 结局 ======== -->
+  <section id="screen-ending" class="screen">
+    <div class="ending-wrap">
+      <div class="panel ending-recap">
+        <h2 id="ending-recap-title" class="section-title">本局故事复盘</h2>
+        <div id="ending-recap" class="recap-scroll"></div>
+      </div>
+      <div class="panel ending-side">
+        <h2 id="ending-goals-title" class="section-title">公开秘密目标</h2>
+        <div id="ending-goals"></div>
+        <hr class="rule">
+        <div id="ending-rate"></div>
+        <div class="ending-actions">
+          <button id="btn-newgame" class="btn primary">再来一局</button>
+          <button id="btn-backmenu" class="btn">返回标题</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<canvas id="fx-canvas"></canvas>
+<div id="overlay-root"></div>
+
+<!-- 文本数据：由 content/*.txt 通过「启动游戏.bat」自动生成 -->
+<script src="content/generated.js"></script>
+<!-- 逻辑与界面 -->
+<script src="src/engine.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/particles.js"></script>
+<script src="src/net.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>

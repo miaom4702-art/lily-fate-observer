@@ -1,0 +1,21 @@
+# 依赖与缓存
+node_modules/
+.godot/
+*.tmp
+*.log
+
+# 本地存档
+savegame.json
+*.save
+
+# 系统文件
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 素材放入区（放个人素材的工作目录，内容不入库）
+tools/素材放入区/*
+!tools/素材放入区/.gitkeep
+
+# 构建产物
+build/

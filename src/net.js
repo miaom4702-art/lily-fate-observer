@@ -1,0 +1,50 @@
+/* net.js —— 客户端网络（连接房间服务器，WebSocket）。
+   服务器只做房间/中继；游戏逻辑由「房主客户端」权威运行。 */
+window.Net = (function () {
+  let ws = null, myId = null, hostId = null, code = '', name = '观察者';
+  const L = {};
+  function on(ev, cb){ (L[ev] || (L[ev] = [])).push(cb); }
+  function emit(ev, d){ (L[ev] || []).forEach(f => { try { f(d); } catch (e){} }); }
+  function connected(){ return !!ws && ws.readyState === 1; }
+
+  function connect(url){
+    return new Promise((resolve, reject) => {
+      try { ws = new WebSocket(url); } catch (e){ reject(e); return; }
+      ws.onopen = () => resolve();
+      ws.onerror = () => reject(new Error('无法连接服务器'));
+      ws.onclose = () => { emit('closed'); ws = null; };
+      ws.onmessage = ev => {
+        let m; try { m = JSON.parse(ev.data); } catch (e){ return; }
+        handle(m);
+      };
+    });
+  }
+  function handle(m){
+    switch (m.t){
+      case 'hello': myId = m.id; break;
+      case 'joined': myId = m.id; hostId = m.host; code = m.code; emit('joined', m); break;
+      case 'players': hostId = m.host; emit('players', m); break;
+      case 'relay': emit('relay', m); break;
+      case 'system': emit('system', m.text); break;
+      case 'error': emit('error', m.msg); break;
+      case 'kicked': emit('kicked'); break;
+    }
+  }
+  function create(c, n){ name = n; myId = null; sendRaw({ t: 'create', code: c, name: n }); }
+  function join(c, n){ name = n; myId = null; sendRaw({ t: 'join', code: c, name: n }); }
+  function setName(n){ name = n; sendRaw({ t: 'name', name: n }); }
+  function relay(data, to){ sendRaw({ t: 'relay', to: to || 'all', data }); }
+  function kick(id){ sendRaw({ t: 'kick', target: id }); }
+  function leave(){ sendRaw({ t: 'leave' }); close(); }
+  function close(){ if (ws){ try { ws.close(); } catch (e){} } ws = null; }
+  function sendRaw(o){ if (connected()) ws.send(JSON.stringify(o)); }
+
+  return {
+    on, connect, create, join, setName, relay, kick, leave, close, connected,
+    get myId(){ return myId; },
+    get hostId(){ return hostId; },
+    get roomCode(){ return code; },
+    get playerName(){ return name; },
+    get isHost(){ return myId != null && myId === hostId; }
+  };
+})();
