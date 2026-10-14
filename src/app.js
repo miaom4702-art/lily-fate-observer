@@ -971,12 +971,20 @@
   function leaveLobby(){ Net.leave(); lobbyPlayers=[]; pendingBots=0; showScreen('screen-title'); }
   async function netConnect(){
     if(Net.connected()) return true;
-    const url = (document.getElementById('net-url').value||'ws://localhost:8787').trim();
+    const field = document.getElementById('net-url');
+    let url = (field && field.value ? field.value : (Net.defaultServer() || '')).trim();
+    if(!url){ const st=document.getElementById('lobby-status'); if(st) st.textContent='请填写服务器地址（局域网：ws://房主IP:8787；公网：wss://你的域名）'; return false; }
     try { await Net.connect(url); return true; }
-    catch(e){ const st=document.getElementById('lobby-status'); if(st) st.textContent='连接服务器失败，请先运行「启动服务器.bat」（'+url+'）'; return false; }
+    catch(e){ const st=document.getElementById('lobby-status'); if(st) st.textContent='连接服务器失败：'+url+'（局域网请先双击「启动服务器.bat」）'; return false; }
   }
   function initNet(){
     const on = (id, ev, fn)=>{ const e=document.getElementById(id); if(e) e.addEventListener(ev, fn); };
+    // 服务器地址：若网页已部署在同源（http/https），自动连接、隐藏输入框；否则预填/显示
+    const deployed = (location.protocol === 'http:' || location.protocol === 'https:');
+    const urlInput = document.getElementById('net-url');
+    if (urlInput && !urlInput.value && Net.defaultServer()) urlInput.value = Net.defaultServer();
+    const urlRow = document.getElementById('net-url-row');
+    if (urlRow) urlRow.style.display = deployed ? 'none' : '';
     on('nav-multi','click', ()=>{ Sound.play('click'); populateLobbyGoals(); showScreen('screen-lobby'); });
     on('lobby-back','click', leaveLobby);
     on('lobby-leave','click', leaveLobby);

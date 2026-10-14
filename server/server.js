@@ -6,6 +6,8 @@
  * ============================================================ */
 const http = require('http');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8787;
 const MAX_PLAYERS = 8;
@@ -83,9 +85,35 @@ function leave(conn) {
 }
 
 /* ---------------- HTTP + Upgrade ---------------- */
+/* ---------------- 同时托管游戏页面（静态文件） ---------------- */
+const ROOT = path.join(__dirname, '..');
+const MIME = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
+  '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf'
+};
+function serveStatic(req, res) {
+  let p = decodeURIComponent((req.url || '/').split('?')[0]);
+  if (p === '/') p = '/index.html';
+  const filePath = path.normalize(path.join(ROOT, p));
+  if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('403'); return; }
+  fs.readFile(filePath, (err, data) => {
+    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream' });
+    res.end(data);
+  });
+}
 function onRequest(req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('百合命运观察者 · 房间服务器运行中。房间数：' + rooms.size);
+  const url = (req.url || '/').split('?')[0];
+  if (url === '/healthz' || url === '/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: true, rooms: rooms.size, players: MAX_PLAYERS }));
+    return;
+  }
+  serveStatic(req, res);
 }
 function onUpgrade(req, socket) {
   const key = req.headers['sec-websocket-key'];

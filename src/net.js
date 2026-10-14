@@ -7,6 +7,14 @@ window.Net = (function () {
   function emit(ev, d){ (L[ev] || []).forEach(f => { try { f(d); } catch (e){} }); }
   function connected(){ return !!ws && ws.readyState === 1; }
 
+  // 默认服务器：优先 config.js 指定；否则若网页本身是 http(s)（已部署），自动用同源地址
+  function defaultServer(){
+    if (window.GAME_CONFIG && window.GAME_CONFIG.server) return window.GAME_CONFIG.server;
+    if (typeof location !== 'undefined' && (location.protocol === 'http:' || location.protocol === 'https:')){
+      return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+    }
+    return '';
+  }
   function normalize(url){
     let u = String(url || '').trim();
     if (u.indexOf('https://') === 0) u = 'wss://' + u.slice(8);
@@ -19,6 +27,7 @@ window.Net = (function () {
     return u;
   }
   function connect(url){
+    url = url || defaultServer();
     const real = normalize(url);
     return new Promise((resolve, reject) => {
       try { ws = new WebSocket(real); } catch (e){ reject(e); return; }
@@ -52,7 +61,7 @@ window.Net = (function () {
   function sendRaw(o){ if (connected()) ws.send(JSON.stringify(o)); }
 
   return {
-    on, connect, create, join, setName, relay, kick, leave, close, connected,
+    on, connect, create, join, setName, relay, kick, leave, close, connected, defaultServer,
     get myId(){ return myId; },
     get hostId(){ return hostId; },
     get roomCode(){ return code; },

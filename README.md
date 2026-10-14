@@ -52,28 +52,31 @@
 
 ---
 
-### 公网联机（跨局域网对战）
+### 联机（简化版：部署一次，发个链接大家就能玩）
 
-直接填**内网 IP 只在同一局域网有效**；不同网络之间必须把**房间服务器放到公网**。任选其一：
+**关键点：服务器会同时托管「游戏网页」，所以只要部署一次、把网址发给大家，玩家打开链接即可 —— 无需安装、无需填服务器地址。**
 
-**A. 部署到免费云平台（推荐，最省事）**
-本仓库已内置部署配置（`Dockerfile` / `render.yaml` / `Procfile` / `package.json`）。以 Render 为例：
-1. 把本仓库连到 [Render](https://render.com) → New → **Web Service**，选择本仓库（会自动识别 `render.yaml`）。
-2. 部署完成得到一个地址，例如 `https://lily-fate-server.onrender.com`。
-3. 所有玩家在大厅「**服务器**」里填 **`wss://lily-fate-server.onrender.com`**（填 `https://…` 会自动转成 `wss://`）。
-4. 房主创建房间，其他人凭房间码加入即可**跨网络对战**。
+**推荐：一键部署到 Render（免费）**
 
-Railway / Fly.io / Glitch / Replit 同理：启动命令都是 `node server/server.js`，监听 `process.env.PORT`。
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/miaom4702-art/lily-fate-observer)
 
-**B. 自建 VPS + 证书（wss）**
-在公网服务器运行 `node server/server.js`，设置环境变量 `TLS_CERT` / `TLS_KEY` 指向证书，即可直接提供 `wss://`。
+1. 点上面的按钮（或用 Render 连接本仓库）→ 按提示创建 **Web Service**。
+2. 部署完成得到一个网址，例如 `https://lily-fate-server.onrender.com`。
+3. **把这个网址发给朋友**，大家用浏览器打开**同一个网址**。
+4. 房主「联机对战 → 创建房间」，其他人输入同一**房间码**「加入房间」即可。
 
-**C. 内网穿透（临时）**
-本地跑服务器后，用 `cloudflared tunnel --url http://localhost:8787`（或 ngrok）得到公网 `https://…` 地址，
-玩家填对应的 `wss://…`。
+> 当网页来自 `http(s)://`（即通过服务器打开）时，客户端会**自动连接同一个服务器**，「服务器」一栏会自动隐藏 —— 玩家只需填「名字 + 房间码」。
 
-> 原理：本项目为「**客户端 — 房间服务器**」模型，服务器必须公网可达；浏览器之间不直连（规避 NAT 问题）。
-> 只要服务器在线，任何网络的玩家都能加入同一房间。大厅「服务器」输入框支持 `ws://`、`wss://`、`http(s)://` 与裸域名。
+**自己在同一 WiFi 玩（更简单，不部署）**
+1. 房主双击 `启动服务器.bat`（需装 Node.js）。
+2. 房主浏览器打开 `http://localhost:8787`（服务器已托管游戏网页）。
+3. 同一 WiFi 的朋友打开 `http://房主内网IP:8787`。
+4. 创建/加入房间即可。
+
+**其它方式**
+- Railway / Fly.io / Glitch / Replit：启动命令 `node server/server.js`，监听 `PORT`。
+- 自建 VPS：`node server/server.js`，设 `TLS_CERT`/`TLS_KEY` 即支持 `wss://`。
+- 想让大家「双击 index.html 也能连某个固定服务器」：把你部署的地址填进根目录 **`config.js`** 的 `server` 字段即可。
 
 ## 三、安装方法
 

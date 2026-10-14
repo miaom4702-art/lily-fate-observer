@@ -25,7 +25,7 @@
         <button id="nav-settings" class="btn big">设置</button>
       </nav>
     </div>
-    <p class="title-foot">百合命运观察者 · v0.1.1</p>
+    <p class="title-foot">百合命运观察者 · v0.1.2</p>
   </section>
 
   <!-- ======== 新游戏设置 ======== -->
@@ -97,7 +97,7 @@
         <button id="lobby-back" class="btn small">返回</button>
       </div>
       <div class="field"><label for="net-name">玩家名</label><input id="net-name" class="text-input" value="观察者" maxlength="12"></div>
-      <div class="field"><label for="net-url">服务器</label><input id="net-url" class="text-input" value="ws://localhost:8787"></div>
+      <div class="field" id="net-url-row"><label for="net-url">服务器</label><input id="net-url" class="text-input" placeholder="ws://房主IP:8787 或 wss://你的域名"></div>
       <div class="field"><label for="net-code">房间码</label><input id="net-code" class="text-input" maxlength="6" placeholder="4~6 位字母数字"></div>
       <div class="menu-actions">
         <button id="net-create" class="btn primary">创建房间</button>
@@ -209,6 +209,7 @@
 <script src="src/engine.js"></script>
 <script src="src/audio.js"></script>
 <script src="src/particles.js"></script>
+<script src="config.js"></script>
 <script src="src/net.js"></script>
 <script src="src/app.js"></script>
 </body>
