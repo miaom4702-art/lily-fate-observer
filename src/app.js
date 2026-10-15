@@ -461,7 +461,7 @@
     [1, 2, 3].forEach(n => {
       const b = el('button', 'btn', '+' + n);
       b.dataset.plus = n;
-      b.addEventListener('click', () => { Sound.play('bid'); doBid(int(E.localPlayer().bid) + n); });
+      b.addEventListener('click', () => { Sound.play('bid'); doBid(E.localPlayer().bid + n); });
       row.appendChild(b);
     });
     const zero = el('button', 'btn', '清零');
